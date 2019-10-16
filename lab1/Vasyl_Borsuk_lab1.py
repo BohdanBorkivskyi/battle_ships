@@ -12,7 +12,7 @@ def read_field(filename):
     with open(filename, "r") as field_txt:
         field = field_txt.readlines()
         for line in range(len(field)):
-            field[line] = list(field[line])[0:10]
+            field[line] = list(field[line])[:10]
         return field
 
 
@@ -32,9 +32,7 @@ def has_ship(field, coordinates):
 
     Checks whether ship is in the given coordinats.
     """
-    if field[coordinates[0]][coordinates[1]] == "*":
-        return True
-    return False
+    return field[coordinates[0]][coordinates[1]] == "*"
 
 
 def ship_size(field, coordinates):
@@ -90,10 +88,7 @@ def is_valid(field):
                     used_coordinates += ship_size_res[1]
                     used_ships[ship_size_res[0] - 1] += 1
 
-    for i in range(len(used_ships)):
-        if 4 - i != used_ships[i]:
-            return False
-    return True
+    return all([4 - i == ship] for i, ship in enumerate(used_ships))
 
 
 def field_to_str(field, filename=None):
@@ -134,26 +129,18 @@ def generate_field():
     """
     import random
 
-    def covered_area(coordinates1, coordinates2):
+    def covered_area(coord1, coord2):
         """
         tuple(int, int), tuple(int, int) -> list(tuple(int, int)), set(tuple(int, int))
 
         Finds ship coordinates and area, which ship covers.
         """
-        area = set()
-        ship_coordinates = set()
-        if coordinates1 > coordinates2:
-            coordinates1, coordinates2 = coordinates2, coordinates1
+        if coord1 > coord2:
+            coord1, coord2 = coord2, coord1
 
-        for line in range(coordinates1[0], coordinates2[0] + 1):
-            for column in range(coordinates1[1], coordinates2[1] + 1):
-                ship_coordinates.add((line, column))
-
-        for coordinates in ship_coordinates:
-            for i in [-1, 0, 1]:
-                for j in [-1, 0, 1]:
-                    area.add((coordinates[0] + i, coordinates[1] + j))
-        return ship_coordinates, area
+        ship_coords = {(l, c) for l in range(coord1[0], coord2[0] + 1) for c in range(coord1[1], coord2[1] + 1)}
+        area = {(coord[0] + i, coord[1] + j) for coord in ship_coords for i in [-1, 0, 1] for j in [-1, 0, 1]}
+        return ship_coords, area
 
     def generate_coordinates2(coordinates1, size):
         """
@@ -163,10 +150,7 @@ def generate_field():
         """
         while True:
             x = random.choice([-size + 1, 0, size - 1])
-            if x == 0:
-                y = random.choice([-size + 1, size - 1])
-            else:
-                y = 0
+            y = 0 if x else random.choice([-size + 1, size - 1])
             coordinates2 = (coordinates1[0] + x, coordinates1[1] + y)
             if coordinates2[0] in range(10) and coordinates2[1] in range(10):
                 return coordinates2
@@ -180,23 +164,18 @@ def generate_field():
                 coordinates1 = random.choice(used_coordinates)
                 size = 4 - ship_type
                 coordinates2 = generate_coordinates2(coordinates1, size)
-                ship_coordinates, area = covered_area(coordinates1, coordinates2)
+                ship_coords, area = covered_area(coordinates1, coordinates2)
 
-                dermo = False
-                for coordinates in ship_coordinates:
-                    if (coordinates[0] in range(10) and coordinates[1] in range(10)) and\
-                       coordinates not in used_coordinates:
-                        dermo = True
-                if dermo:
-                    continue
+                if all([c[0] not in range(10) or c[1] not in range(10) or c in used_coordinates for c in ship_coords]):
+                    break
 
-                for coordinates in area:
-                    if coordinates[0] in range(10) and coordinates[1] in range(10) and\
-                            coordinates in used_coordinates:
-                        used_coordinates.remove(coordinates)
-                for coordinates in ship_coordinates:
-                    field[coordinates[0]][coordinates[1]] = "*"
-                break
+            for coordinates in area:
+                if coordinates[0] in range(10) and coordinates[1] in range(10) and\
+                        coordinates in used_coordinates:
+                    used_coordinates.remove(coordinates)
+            for coordinates in ship_coords:
+                field[coordinates[0]][coordinates[1]] = "*"
+
     return field
 
 
